@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 [manifest]
 members = [
     "bub-contrib",
+    "bub-schedule",
     "bub-tg-feed",
 ]
 
@@ -201,7 +202,7 @@ wheels = [
 [[package]]
 name = "bub"
 version = "0.3.0"
-source = { git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework#2515e2c05bbddd838ba5066f57bd13934ba94692" }
+source = { git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework#9b24f7478574b48faf45ecdcbaceedbc10a359d0" }
 dependencies = [
     { name = "any-llm-sdk", extra = ["anthropic"] },
     { name = "apscheduler" },
@@ -231,6 +232,21 @@ dependencies = [
 requires-dist = [
     { name = "bub", git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework" },
     { name = "bub-tg-feed", editable = "packages/bub-tg-feed" },
+]
+
+[[package]]
+name = "bub-schedule"
+version = "0.1.0"
+source = { editable = "packages/bub-schedule" }
+dependencies = [
+    { name = "apscheduler" },
+    { name = "bub" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "apscheduler", specifier = ">=3.11.2" },
+    { name = "bub", git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework" },
 ]
 
 [[package]]
