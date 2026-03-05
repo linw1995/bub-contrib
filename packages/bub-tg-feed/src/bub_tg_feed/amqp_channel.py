@@ -369,7 +369,7 @@ class AMQPChannel(Channel):
                 message.message_id,
             )
             return None
-
+        await self._get_me()
         channel_message = self._build_message(payload)
         await self._on_receive(channel_message)
 
