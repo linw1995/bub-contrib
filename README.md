@@ -10,6 +10,9 @@ Contrib packages for the `bub` ecosystem.
 - `packages/bub-schedule`
   - Bub plugin entry point: `schedule`
   - Provides scheduling channel/tools backed by APScheduler with a JSON job store.
+- `packages/bub-discord`
+  - Provides a Discord channel adapter (`DiscordChannel`) for Bub message IO.
+  - Note: this package currently does not expose a Bub plugin entry point.
 
 ## Repository Layout
 
@@ -17,6 +20,7 @@ Contrib packages for the `bub` ecosystem.
 packages/
   bub-tg-feed/
   bub-schedule/
+  bub-discord/
 ```
 
 ## Prerequisites
@@ -35,7 +39,7 @@ uv sync
 Install contrib packages in editable mode:
 
 ```bash
-uv pip install -e packages/bub-tg-feed -e packages/bub-schedule
+uv pip install -e packages/bub-tg-feed -e packages/bub-schedule -e packages/bub-discord
 ```
 
 ## Runtime Notes
@@ -48,6 +52,14 @@ uv pip install -e packages/bub-tg-feed -e packages/bub-schedule
 ### `bub-schedule` persistence
 
 - Scheduled jobs are persisted to `jobs.json` under Bub runtime home.
+
+### `bub-discord` environment variables
+
+- `BUB_DISCORD_TOKEN`: Discord bot token (required)
+- `BUB_DISCORD_ALLOW_USERS`: Optional comma-separated sender allowlist (user id/username/global name)
+- `BUB_DISCORD_ALLOW_CHANNELS`: Optional comma-separated channel id allowlist
+- `BUB_DISCORD_COMMAND_PREFIX`: Optional command prefix, default `!`
+- `BUB_DISCORD_PROXY`: Optional proxy URL for Discord API
 
 ## License
 
