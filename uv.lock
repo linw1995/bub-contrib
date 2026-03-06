@@ -300,8 +300,8 @@ wheels = [
 
 [[package]]
 name = "bub"
-version = "0.3.0"
-source = { git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework#96dea1473438c5a80d0fdbf67d833e7078235392" }
+version = "0.3.0a1"
+source = { git = "https://github.com/bubbuild/bub.git#3ef6ad304a5a0507f60f81858eeb6b8ed2e26ab8" }
 dependencies = [
     { name = "any-llm-sdk", extra = ["anthropic"] },
     { name = "loguru" },
@@ -326,7 +326,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "bub", git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework" }]
+requires-dist = [{ name = "bub", git = "https://github.com/bubbuild/bub.git" }]
 
 [[package]]
 name = "bub-contrib"
@@ -342,7 +342,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bub", git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework" },
+    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
     { name = "bub-codex", editable = "packages/bub-codex" },
     { name = "bub-discord", editable = "packages/bub-discord" },
     { name = "bub-schedule", editable = "packages/bub-schedule" },
@@ -360,7 +360,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bub", git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework" },
+    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
     { name = "discord-py", specifier = ">=2.7.1" },
 ]
 
@@ -376,7 +376,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "apscheduler", specifier = ">=3.11.2" },
-    { name = "bub", git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework" },
+    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
 ]
 
 [[package]]
@@ -393,7 +393,7 @@ dependencies = [
 requires-dist = [
     { name = "aio-pika", specifier = ">=9.6.1" },
     { name = "aiohttp", specifier = ">=3.13.3" },
-    { name = "bub", git = "https://github.com/bubbuild/bub.git?rev=frost%2Fbub-framework" },
+    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
 ]
 
 [[package]]
