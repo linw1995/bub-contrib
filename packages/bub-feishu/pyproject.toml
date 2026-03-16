@@ -8,7 +8,6 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "bub>=0.3.0a1",
     "httpx>=0.28.1",
     "lark-oapi>=1.4.20",
     "pydantic-settings>=2.10.1",
@@ -22,5 +21,5 @@ requires = ["uv_build>=0.10.4,<0.11.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-name = ["bub_feishu", "bub_skills.feishu"]
-source-include = ["src/bub_skills/feishu/SKILL.md", "src/bub_skills/feishu/scripts/*.py"]
+module-name = ["bub_feishu", "skills.feishu"]
+source-include = ["src/skills/feishu/SKILL.md", "src/skills/feishu/scripts/*.py"]

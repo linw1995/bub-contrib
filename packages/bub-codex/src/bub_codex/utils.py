@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def _copy_bub_skills(workspace: Path) -> list[Path]:
-    bub_skill_paths = importlib.import_module("bub_skills").__path__
+    bub_skill_paths = importlib.import_module("skills").__path__
     workspace.joinpath(".agents/skills").mkdir(parents=True, exist_ok=True)
     collected_symlinks: list[Path] = []
     for skill_root in bub_skill_paths:

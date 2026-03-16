@@ -9,7 +9,6 @@ requires-python = ">=3.12"
 dependencies = [
     "aio-pika>=9.6.1",
     "aiohttp>=3.13.3",
-    "bub>=0.3.0a1",
 ]
 
 [project.entry-points.bub]

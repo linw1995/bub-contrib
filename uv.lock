@@ -346,12 +346,6 @@ dependencies = [
 name = "bub-codex"
 version = "0.1.0"
 source = { editable = "packages/bub-codex" }
-dependencies = [
-    { name = "bub" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "bub", git = "https://github.com/bubbuild/bub.git" }]
 
 [[package]]
 name = "bub-contrib"
@@ -387,22 +381,17 @@ name = "bub-discord"
 version = "0.1.0"
 source = { editable = "packages/bub-discord" }
 dependencies = [
-    { name = "bub" },
     { name = "discord-py" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
-    { name = "discord-py", specifier = ">=2.7.1" },
-]
+requires-dist = [{ name = "discord-py", specifier = ">=2.7.1" }]
 
 [[package]]
 name = "bub-feishu"
 version = "0.1.0"
 source = { editable = "packages/bub-feishu" }
 dependencies = [
-    { name = "bub" },
     { name = "httpx" },
     { name = "lark-oapi" },
     { name = "pydantic-settings" },
@@ -410,7 +399,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "lark-oapi", specifier = ">=1.4.20" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
@@ -422,29 +410,21 @@ version = "0.1.0"
 source = { editable = "packages/bub-schedule" }
 dependencies = [
     { name = "apscheduler" },
-    { name = "bub" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "apscheduler", specifier = ">=3.11.2" },
-    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
-]
+requires-dist = [{ name = "apscheduler", specifier = ">=3.11.2" }]
 
 [[package]]
 name = "bub-tapestore-sqlalchemy"
 version = "0.1.0"
 source = { editable = "packages/bub-tapestore-sqlalchemy" }
 dependencies = [
-    { name = "bub" },
     { name = "sqlalchemy" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
-    { name = "sqlalchemy", specifier = ">=2.0.0" },
-]
+requires-dist = [{ name = "sqlalchemy", specifier = ">=2.0.0" }]
 
 [[package]]
 name = "bub-tapestore-sqlite"
@@ -453,7 +433,6 @@ source = { editable = "packages/bub-tapestore-sqlite" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "any-llm-sdk" },
-    { name = "bub" },
     { name = "republic" },
     { name = "sqlite-vec" },
 ]
@@ -462,7 +441,6 @@ dependencies = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
     { name = "any-llm-sdk" },
-    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
     { name = "republic", specifier = ">=0.5.4" },
     { name = "sqlite-vec", specifier = ">=0.1.6" },
 ]
@@ -474,26 +452,18 @@ source = { editable = "packages/bub-tg-feed" }
 dependencies = [
     { name = "aio-pika" },
     { name = "aiohttp" },
-    { name = "bub" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "aio-pika", specifier = ">=9.6.1" },
     { name = "aiohttp", specifier = ">=3.13.3" },
-    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
 ]
 
 [[package]]
 name = "bub-web-search"
 version = "0.1.0"
 source = { editable = "packages/bub-web-search" }
-dependencies = [
-    { name = "bub" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "bub", git = "https://github.com/bubbuild/bub.git" }]
 
 [[package]]
 name = "certifi"

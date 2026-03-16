@@ -6,7 +6,7 @@ Feishu channel adapter for `bub`.
 
 - Channel implementation: `FeishuChannel` (`name = "feishu"`)
 - Inbound message adaptation from Feishu to Bub `ChannelMessage`
-- Packaged Feishu skill resources under `bub_skills/feishu`
+- Packaged Feishu skill resources under `skills/feishu`
 - `feishu_send.py` supports both text and card sending via `--format text|card`
 - `feishu_edit.py` updates an existing bot message
 

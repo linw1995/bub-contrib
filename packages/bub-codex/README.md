@@ -7,7 +7,7 @@ Codex model plugin for `bub`.
 - Bub plugin entry point: `codex`
 - A `run_model` hook implementation that invokes the `codex` CLI
 - Session continuation via `codex e resume <session_id>`
-- Optional temporary skill wiring from `bub_skills` into workspace `.agents/skills`
+- Optional temporary skill wiring from `skills` into workspace `.agents/skills`
 
 ## Installation
 
@@ -39,6 +39,6 @@ The plugin reads environment variables with prefix `BUB_CODEX_`:
 
 ## Skill Integration
 
-- During invocation, the plugin scans `bub_skills` for directories containing `SKILL.md`.
+- During invocation, the plugin scans `skills` for directories containing `SKILL.md`.
 - It creates symlinks under `<workspace>/.agents/skills/<skill_name>`.
 - Symlinks created by this plugin invocation are removed after the run.

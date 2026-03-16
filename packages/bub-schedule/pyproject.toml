@@ -8,7 +8,6 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "apscheduler>=3.11.2",
-    "bub>=0.3.0a1",
 ]
 
 [project.entry-points.bub]
