@@ -15,6 +15,7 @@ dependencies = [
     "bub-tg-feed",
     "bub-web-search",
     "bub-feishu",
+    "bub-session-prompt",
 ]
 
 [tool.uv.workspace]
@@ -31,3 +32,4 @@ bub-tapestore-sqlalchemy = { workspace = true }
 bub-tapestore-sqlite = { workspace = true }
 bub-web-search = { workspace = true }
 bub-feishu = { workspace = true }
+bub-session-prompt = { workspace = true }

@@ -11,9 +11,11 @@ resolution-markers = [
 members = [
     "bub-codex",
     "bub-contrib",
+    "bub-dingtalk",
     "bub-discord",
     "bub-feishu",
     "bub-schedule",
+    "bub-session-prompt",
     "bub-tapestore-sqlalchemy",
     "bub-tapestore-sqlite",
     "bub-tg-feed",
@@ -354,9 +356,11 @@ source = { virtual = "." }
 dependencies = [
     { name = "bub" },
     { name = "bub-codex" },
+    { name = "bub-dingtalk" },
     { name = "bub-discord" },
     { name = "bub-feishu" },
     { name = "bub-schedule" },
+    { name = "bub-session-prompt" },
     { name = "bub-tapestore-sqlalchemy" },
     { name = "bub-tapestore-sqlite" },
     { name = "bub-tg-feed" },
@@ -367,13 +371,30 @@ dependencies = [
 requires-dist = [
     { name = "bub", git = "https://github.com/bubbuild/bub.git" },
     { name = "bub-codex", editable = "packages/bub-codex" },
+    { name = "bub-dingtalk", editable = "packages/bub-dingtalk" },
     { name = "bub-discord", editable = "packages/bub-discord" },
     { name = "bub-feishu", editable = "packages/bub-feishu" },
     { name = "bub-schedule", editable = "packages/bub-schedule" },
+    { name = "bub-session-prompt", editable = "packages/bub-session-prompt" },
     { name = "bub-tapestore-sqlalchemy", editable = "packages/bub-tapestore-sqlalchemy" },
     { name = "bub-tapestore-sqlite", editable = "packages/bub-tapestore-sqlite" },
     { name = "bub-tg-feed", editable = "packages/bub-tg-feed" },
     { name = "bub-web-search", editable = "packages/bub-web-search" },
+]
+
+[[package]]
+name = "bub-dingtalk"
+version = "0.1.0"
+source = { editable = "packages/bub-dingtalk" }
+dependencies = [
+    { name = "bub" },
+    { name = "dingtalk-stream" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "bub", git = "https://github.com/bubbuild/bub.git" },
+    { name = "dingtalk-stream", specifier = ">=0.24.0" },
 ]
 
 [[package]]
@@ -414,6 +435,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "apscheduler", specifier = ">=3.11.2" }]
+
+[[package]]
+name = "bub-session-prompt"
+version = "0.1.0"
+source = { editable = "packages/bub-session-prompt" }
 
 [[package]]
 name = "bub-tapestore-sqlalchemy"
@@ -660,6 +686,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/96/93/682d2b43c1d5f1406ed048f377c0fc9fc8f7b0447a478d5c65ab3d3a66eb/cryptography-46.0.5-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:ced80795227d70549a411a4ab66e8ce307899fad2220ce5ab2f296e687eacde9", size = 4667123, upload-time = "2026-02-10T19:18:15.886Z" },
     { url = "https://files.pythonhosted.org/packages/45/2d/9c5f2926cb5300a8eefc3f4f0b3f3df39db7f7ce40c8365444c49363cbda/cryptography-46.0.5-cp38-abi3-win32.whl", hash = "sha256:02f547fce831f5096c9a567fd41bc12ca8f11df260959ecc7c3202555cc47a72", size = 3010220, upload-time = "2026-02-10T19:18:17.361Z" },
     { url = "https://files.pythonhosted.org/packages/48/ef/0c2f4a8e31018a986949d34a01115dd057bf536905dca38897bacd21fac3/cryptography-46.0.5-cp38-abi3-win_amd64.whl", hash = "sha256:556e106ee01aa13484ce9b0239bca667be5004efb0aabbed28d353df86445595", size = 3467050, upload-time = "2026-02-10T19:18:18.899Z" },
+]
+
+[[package]]
+name = "dingtalk-stream"
+version = "0.24.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "requests" },
+    { name = "websockets" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4c/44/102dede3f371277598df6aa9725b82e3add068c729333c7a5dbc12764579/dingtalk_stream-0.24.3-py3-none-any.whl", hash = "sha256:2160403656985962878bf60cdf5adf41619f21067348e06f07a7c7eebf5943ad", size = 27813, upload-time = "2025-10-24T09:36:57.497Z" },
 ]
 
 [[package]]

@@ -4,33 +4,18 @@ Contrib packages for the `bub` ecosystem.
 
 ## Packages
 
-- `packages/bub-codex`
-  - Bub plugin entry point: `codex`
-  - Provides a `run_model` hook that delegates model execution to the Codex CLI.
-- `packages/bub-tg-feed`
-  - Bub plugin entry point: `tg-feed`
-  - Provides an AMQP-based channel adapter for Telegram feed messages.
-- `packages/bub-schedule`
-  - Bub plugin entry point: `schedule`
-  - Provides scheduling channel/tools backed by APScheduler with a JSON job store.
-- `packages/bub-tapestore-sqlalchemy`
-  - Bub plugin entry point: `tapestore-sqlalchemy`
-  - Provides a SQLAlchemy-backed tape store for Bub conversation history.
-- `packages/bub-tapestore-sqlite`
-  - Bub plugin entry point: `tapestore-sqlite`
-  - Provides a SQLite-backed tape store for Bub conversation history.
-- `packages/bub-discord`
-  - Bub plugin entry point: `discord`
-  - Provides a Discord channel adapter for Bub message IO.
-- `packages/bub-dingtalk`
-  - Bub plugin entry point: `dingtalk`
-  - Provides a DingTalk Stream Mode channel adapter for Bub message IO.
-- `packages/bub-web-search`
-  - Provides a `web.search` tool backed by the Ollama web search API.
-  - Registers the tool only when `BUB_SEARCH_OLLAMA_API_KEY` is configured.
-- `packages/bub-feishu`
-  - Bub plugin entry point: `feishu`
-  - Provides a Feishu channel adapter for Bub message IO.
+| Package                             | Bub Plugin Entry Point | Description                                                                                                                               |
+| ----------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/bub-codex`                | `codex`                | Provides a `run_model` hook that delegates model execution to the Codex CLI.                                                              |
+| `packages/bub-tg-feed`              | `tg-feed`              | Provides an AMQP-based channel adapter for Telegram feed messages.                                                                        |
+| `packages/bub-schedule`             | `schedule`             | Provides scheduling channel/tools backed by APScheduler with a JSON job store.                                                            |
+| `packages/bub-tapestore-sqlalchemy` | `tapestore-sqlalchemy` | Provides a SQLAlchemy-backed tape store for Bub conversation history.                                                                     |
+| `packages/bub-tapestore-sqlite`     | `tapestore-sqlite`     | Provides a SQLite-backed tape store for Bub conversation history.                                                                         |
+| `packages/bub-discord`              | `discord`              | Provides a Discord channel adapter for Bub message IO.                                                                                    |
+| `packages/bub-dingtalk`             | `dingtalk`             | Provides a DingTalk Stream Mode channel adapter for Bub message IO.                                                                       |
+| `packages/bub-web-search`           | `web-search`           | Provides a `web.search` tool backed by the Ollama web search API. Registers the tool only when `BUB_SEARCH_OLLAMA_API_KEY` is configured. |
+| `packages/bub-feishu`               | `feishu`               | Provides a Feishu channel adapter for Bub message IO.                                                                                     |
+| `packages/bub-session-prompt`       | `session-prompt`       | Provides a session-specific system prompt sourced from `~/.bub/sessions/<session_id>/AGENTS.md`.                                          |
 
 ## Prerequisites
 

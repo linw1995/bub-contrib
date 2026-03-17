@@ -1,0 +1,17 @@
+[project]
+name = "bub-session-prompt"
+version = "0.1.0"
+description = "Bub plugin to support session-specific system prompt"
+readme = "README.md"
+authors = [
+    { name = "Frost Ming", email = "me@frostming.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.entry-points.bub]
+session-prompt = "bub_session_prompt.plugin"
+
+[build-system]
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"
