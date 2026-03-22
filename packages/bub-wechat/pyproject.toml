@@ -1,0 +1,19 @@
+[project]
+name = "bub-wechat"
+version = "0.1.0"
+description = "Wechat Agent channel for Bub"
+readme = "README.md"
+authors = [
+    { name = "Frost Ming", email = "me@frostming.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "weixin-bot-sdk>=0.2.0",
+]
+
+[project.entry-points.bub]
+wechat = "bub_wechat.plugin:WechatPlugin"
+
+[build-system]
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"

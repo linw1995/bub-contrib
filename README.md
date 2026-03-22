@@ -16,6 +16,7 @@ Contrib packages for the `bub` ecosystem.
 | `packages/bub-web-search`           | `web-search`           | Provides a `web.search` tool backed by the Ollama web search API. Registers the tool only when `BUB_SEARCH_OLLAMA_API_KEY` is configured. |
 | `packages/bub-feishu`               | `feishu`               | Provides a Feishu channel adapter for Bub message IO.                                                                                     |
 | `packages/bub-session-prompt`       | `session-prompt`       | Provides a session-specific system prompt sourced from `~/.bub/sessions/<session_id>/AGENTS.md`.                                          |
+| `packages/bub-wechat`               | `wechat`               | Provides a WeChat channel adapter for Bub message IO.                                                                                     |
 
 ## Prerequisites
 

@@ -17,6 +17,7 @@ dependencies = [
     "bub-web-search",
     "bub-feishu",
     "bub-session-prompt",
+    "bub-wechat",
 ]
 
 [tool.uv.workspace]
@@ -35,3 +36,4 @@ bub-tapestore-sqlite = { workspace = true }
 bub-web-search = { workspace = true }
 bub-feishu = { workspace = true }
 bub-session-prompt = { workspace = true }
+bub-wechat = { workspace = true }
