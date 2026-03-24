@@ -9,6 +9,7 @@ dependencies = [
     "bub-codex",
     "bub-discord",
     "bub-dingtalk",
+    "bub-qq",
     "bub-schedule",
     "bub-tapestore-sqlalchemy",
     "bub-tapestore-redis",
@@ -29,6 +30,7 @@ bub-tg-feed = { workspace = true }
 bub-codex = { workspace = true }
 bub-discord = { workspace = true }
 bub-dingtalk = { workspace = true }
+bub-qq = { workspace = true }
 bub-schedule = { workspace = true }
 bub-tapestore-sqlalchemy = { workspace = true }
 bub-tapestore-redis = { workspace = true }
