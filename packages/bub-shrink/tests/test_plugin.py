@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from pathlib import Path
 from types import SimpleNamespace
+
+from republic import TapeContext, TapeEntry
 
 from bub_shrink import plugin
 
@@ -25,6 +28,13 @@ class FakeTapes:
     async def handoff(self, tape_name: str, *, name: str, state: dict[str, object] | None = None) -> list[object]:
         self.handoff_calls.append({"tape_name": tape_name, "name": name, "state": state})
         return []
+
+    @contextlib.asynccontextmanager
+    async def fork_tape(self, tape_name: str, merge_back: bool = True):
+        yield
+
+    async def ensure_bootstrap_anchor(self, tape_name: str) -> None:
+        return None
 
 
 class FakeAgent:
@@ -87,6 +97,26 @@ def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) 
     monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "1000")
     agent = FakeAgent(last_token_usage=1200, result="continued output")
     shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
+    captured: list[dict[str, object]] = []
+
+    async def fake_run_with_handoff_context(
+        runtime_agent: object,
+        prompt: str | list[dict],
+        *,
+        session_id: str,
+        state: dict[str, object],
+    ) -> str:
+        captured.append(
+            {
+                "runtime_agent": runtime_agent,
+                "prompt": prompt,
+                "session_id": session_id,
+                "state": state,
+            }
+        )
+        return "continued output"
+
+    monkeypatch.setattr(plugin, "_run_with_handoff_context", fake_run_with_handoff_context)
 
     result = asyncio.run(
         shrink.run_model("original prompt", session_id="session-1", state={"_runtime_agent": agent})  # type: ignore[arg-type]
@@ -105,19 +135,41 @@ def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) 
             },
         }
     ]
-    assert agent.run_calls == [
+    assert captured == [
         {
+            "runtime_agent": agent,
             "session_id": "session-1",
-            "prompt": plugin.CONTINUE_PROMPT,
+            "prompt": "original prompt",
             "state": {"_runtime_agent": agent},
         }
     ]
+    assert agent.run_calls == []
 
 
 def test_run_model_uses_fixed_handoff_metadata(monkeypatch) -> None:
     monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "512")
     agent = FakeAgent(last_token_usage=4096)
     shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
+    captured: list[dict[str, object]] = []
+
+    async def fake_run_with_handoff_context(
+        runtime_agent: object,
+        prompt: str | list[dict],
+        *,
+        session_id: str,
+        state: dict[str, object],
+    ) -> str:
+        captured.append(
+            {
+                "runtime_agent": runtime_agent,
+                "prompt": prompt,
+                "session_id": session_id,
+                "state": state,
+            }
+        )
+        return "continued output"
+
+    monkeypatch.setattr(plugin, "_run_with_handoff_context", fake_run_with_handoff_context)
 
     asyncio.run(
         shrink.run_model("original prompt", session_id="session-9", state={"_runtime_agent": agent})  # type: ignore[arg-type]
@@ -134,7 +186,7 @@ def test_run_model_uses_fixed_handoff_metadata(monkeypatch) -> None:
             },
         }
     ]
-    assert agent.run_calls[0]["prompt"] == plugin.CONTINUE_PROMPT
+    assert captured[0]["prompt"] == "original prompt"
 
 
 def test_run_model_uses_runtime_workspace_for_tape_lookup(monkeypatch, tmp_path) -> None:
@@ -164,3 +216,25 @@ def test_run_model_raises_when_runtime_agent_is_missing(monkeypatch) -> None:
         assert str(error) == "bub-shrink could not find an active model backend"
     else:
         raise AssertionError("expected RuntimeError")
+
+
+def test_select_messages_from_last_anchor_keeps_only_last_anchor_segment() -> None:
+    entries = [
+        TapeEntry.anchor("session/start", state={"owner": "human"}),
+        TapeEntry.message({"role": "user", "content": "before"}, run_id="run-1"),
+        TapeEntry.anchor("auto-context-shrink", state={"summary": "latest handoff"}),
+        TapeEntry.message({"role": "assistant", "content": "after"}, run_id="run-2"),
+    ]
+
+    messages = plugin._select_messages_from_last_anchor(entries, TapeContext(state={}))
+
+    assert messages == [
+        {
+            "role": "assistant",
+            "content": '[Anchor created: auto-context-shrink]: {"summary": "latest handoff"}',
+        },
+        {
+            "role": "assistant",
+            "content": "after",
+        },
+    ]

@@ -8,9 +8,9 @@ Automatic handoff on context limit for Bub.
 
 - If `BUB_SHRINK_CONTEXT_LIMIT` is unset, it forwards the original prompt unchanged.
 - If the latest recorded usage is missing or does not exceed the configured limit, it forwards the original prompt unchanged.
-- If the latest recorded usage exceeds the configured limit, it creates a `tape.handoff` anchor and continues the session with the internal prompt `Continue the task.`.
+- If the latest recorded usage exceeds the configured limit, it creates a `tape.handoff` anchor and then runs the original prompt with a context view that starts from the latest anchor.
 
-The handoff metadata is fixed inside the plugin. This package does not implement recovery mode, history trimming, retry-on-error behavior, or live token estimation for the current prompt.
+The handoff metadata is fixed inside the plugin. This package does not implement recovery mode, retry-on-error behavior, or live token estimation for the current prompt.
 
 ## Configuration
 

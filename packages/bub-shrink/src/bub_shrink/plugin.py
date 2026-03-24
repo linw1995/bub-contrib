@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
 from bub import BubFramework, hookimpl
-from bub.builtin.agent import CONTINUE_PROMPT, Agent
+from bub.builtin.agent import Agent
+from bub.builtin.context import _select_messages as _default_select_messages
 from bub.types import State
 from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from republic import TapeContext, TapeEntry
 
 DEFAULT_HANDOFF_NAME = "auto-context-shrink"
 DEFAULT_HANDOFF_SUMMARY = "Context exceeded configured limit; continue from latest handoff."
@@ -80,12 +83,17 @@ class ShrinkPlugin:
                 },
             )
             logger.info(
-                "shrink.run_model.continue session_id={} tape={} prompt={}",
+                "shrink.run_model.run_with_handoff_context session_id={} tape={} prompt_kind={}",
                 session_id,
                 tape_name,
-                CONTINUE_PROMPT,
+                _prompt_kind(prompt),
             )
-            return await runtime_agent.run(session_id=session_id, prompt=CONTINUE_PROMPT, state=state)
+            return await _run_with_handoff_context(
+                runtime_agent,
+                prompt,
+                session_id=session_id,
+                state=state,
+            )
 
         logger.info("shrink.run_model.forward_original session_id={} tape={}", session_id, tape_name)
         return await runtime_agent.run(session_id=session_id, prompt=prompt, state=state)
@@ -115,6 +123,54 @@ def _prompt_kind(prompt: str | list[dict]) -> str:
     if isinstance(prompt, str):
         return "text"
     return "parts"
+
+
+def _select_messages_from_last_anchor(entries: list[TapeEntry], context: TapeContext) -> list[dict]:
+    last_anchor_index = -1
+    for index, entry in enumerate(entries):
+        if entry.kind == "anchor":
+            last_anchor_index = index
+    if last_anchor_index < 0:
+        logger.warning("shrink.context.no_anchor_found entries={}", len(entries))
+        return _default_select_messages(entries, context)
+
+    last_anchor = entries[last_anchor_index]
+    logger.info(
+        "shrink.context.after_last_anchor anchor_name={} entries_before={} entries_after={}",
+        last_anchor.payload.get("name"),
+        last_anchor_index,
+        len(entries) - last_anchor_index,
+    )
+    return _default_select_messages(entries[last_anchor_index:], context)
+
+
+async def _run_with_handoff_context(
+    runtime_agent: Agent,
+    prompt: str | list[dict],
+    *,
+    session_id: str,
+    state: State,
+) -> str:
+    if not prompt:
+        return "error: empty prompt"
+
+    tape = runtime_agent.tapes.session_tape(session_id, _workspace_from_state(state))
+    tape.context = replace(tape.context, select=_select_messages_from_last_anchor, state=state)
+    merge_back = not session_id.startswith("temp/")
+    logger.info(
+        "shrink.handoff_context.start session_id={} tape={} merge_back={} prompt_kind={}",
+        session_id,
+        tape.name,
+        merge_back,
+        _prompt_kind(prompt),
+    )
+    async with runtime_agent.tapes.fork_tape(tape.name, merge_back=merge_back):
+        await runtime_agent.tapes.ensure_bootstrap_anchor(tape.name)
+        if isinstance(prompt, str) and prompt.strip().startswith(","):
+            logger.info("shrink.handoff_context.command session_id={} tape={}", session_id, tape.name)
+            return await runtime_agent._run_command(tape=tape, line=prompt.strip())
+        logger.info("shrink.handoff_context.agent_loop session_id={} tape={}", session_id, tape.name)
+        return await runtime_agent._agent_loop(tape=tape, prompt=prompt)
 
 
 async def _should_handoff(
