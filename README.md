@@ -17,7 +17,7 @@ Contrib packages for the `bub` ecosystem.
 | `packages/bub-feishu`               | `feishu`               | Provides a Feishu channel adapter for Bub message IO.                                                                                     |
 | `packages/bub-session-prompt`       | `session-prompt`       | Provides a session-specific system prompt sourced from `~/.bub/sessions/<session_id>/AGENTS.md`.                                          |
 | `packages/bub-wechat`               | `wechat`               | Provides a WeChat channel adapter for Bub message IO.                                                                                     |
-| `packages/bub-shrink`               | `shrink`               | Adds an automatic `tape.handoff` when the session's latest recorded token usage exceeds `BUB_SHRINK_CONTEXT_LIMIT`, then continues with `Continue the task.` |
+| `packages/bub-shrink`               | `shrink`               | Truncates oversized tool results in prompt context and falls back to automatic `tape.handoff` retry when the model still fails with a context-limit error. |
 
 ## Prerequisites
 

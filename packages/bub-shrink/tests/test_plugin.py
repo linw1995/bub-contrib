@@ -5,25 +5,19 @@ import contextlib
 from pathlib import Path
 from types import SimpleNamespace
 
-from republic import TapeContext
+from republic import TapeContext, TapeEntry
 
 from bub_shrink import plugin
 
 
 class FakeTapes:
-    def __init__(self, *, last_token_usage: int | None) -> None:
-        self.last_token_usage = last_token_usage
+    def __init__(self) -> None:
         self.session_tape_calls: list[tuple[str, Path]] = []
-        self.info_calls: list[str] = []
         self.handoff_calls: list[dict[str, object]] = []
 
     def session_tape(self, session_id: str, workspace: Path) -> SimpleNamespace:
         self.session_tape_calls.append((session_id, workspace))
         return SimpleNamespace(name=f"tape:{session_id}", context=TapeContext(state={}))
-
-    async def info(self, tape_name: str) -> SimpleNamespace:
-        self.info_calls.append(tape_name)
-        return SimpleNamespace(last_token_usage=self.last_token_usage)
 
     async def handoff(self, tape_name: str, *, name: str, state: dict[str, object] | None = None) -> list[object]:
         self.handoff_calls.append({"tape_name": tape_name, "name": name, "state": state})
@@ -38,64 +32,73 @@ class FakeTapes:
 
 
 class FakeAgent:
-    def __init__(self, *, last_token_usage: int | None, result: str = "ok") -> None:
-        self.tapes = FakeTapes(last_token_usage=last_token_usage)
+    def __init__(self, *, result: str = "ok", error: Exception | None = None) -> None:
+        self.tapes = FakeTapes()
         self.result = result
+        self.error = error
         self.run_calls: list[dict[str, object]] = []
 
     async def run(self, *, session_id: str, prompt: str | list[dict], state: dict[str, object]) -> str:
         self.run_calls.append({"session_id": session_id, "prompt": prompt, "state": state})
+        if self.error is not None:
+            raise self.error
         return self.result
 
 
-def test_run_model_passthrough_when_context_limit_is_unset(monkeypatch) -> None:
-    monkeypatch.delenv("BUB_SHRINK_CONTEXT_LIMIT", raising=False)
-    agent = FakeAgent(last_token_usage=9_999, result="plain output")
+def test_select_messages_truncates_tool_result_when_configured(monkeypatch) -> None:
+    monkeypatch.setenv("BUB_SHRINK_TOOL_RESULT_MAX_CHARS", "64")
+    entries = [
+        TapeEntry.tool_call(
+            [{"id": "call-1", "type": "function", "function": {"name": "web.fetch", "arguments": "{}"}}],
+            run_id="run-1",
+        ),
+        TapeEntry.tool_result(["x" * 100], run_id="run-1"),
+    ]
+
+    messages = plugin._select_messages(entries, TapeContext())
+
+    assert messages[0]["tool_calls"][0]["id"] == "call-1"
+    assert messages[1]["role"] == "tool"
+    assert messages[1]["name"] == "web.fetch"
+    assert messages[1]["content"].endswith(plugin.TRUNCATION_SUFFIX)
+    assert len(messages[1]["content"]) == 64
+
+
+def test_select_messages_keeps_tool_result_when_limit_is_unset(monkeypatch) -> None:
+    monkeypatch.delenv("BUB_SHRINK_TOOL_RESULT_MAX_CHARS", raising=False)
+    entries = [
+        TapeEntry.tool_call(
+            [{"id": "call-1", "type": "function", "function": {"name": "web.fetch", "arguments": "{}"}}],
+            run_id="run-1",
+        ),
+        TapeEntry.tool_result(["short result"], run_id="run-1"),
+    ]
+
+    messages = plugin._select_messages(entries, TapeContext())
+
+    assert messages[1]["content"] == "short result"
+
+
+def test_run_model_passthrough_for_non_overflow_errors(monkeypatch) -> None:
+    monkeypatch.setenv("BUB_SHRINK_TOOL_RESULT_MAX_CHARS", "1024")
+    agent = FakeAgent(error=RuntimeError("network timeout"))
     shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
 
-    result = asyncio.run(
-        shrink.run_model("hello", session_id="session-1", state={"_runtime_agent": agent})  # type: ignore[arg-type]
-    )
+    try:
+        asyncio.run(shrink.run_model("hello", session_id="session-1", state={"_runtime_agent": agent}))  # type: ignore[arg-type]
+    except RuntimeError as error:
+        assert str(error) == "network timeout"
+    else:
+        raise AssertionError("expected RuntimeError")
 
-    assert result == "plain output"
-    assert agent.tapes.info_calls == []
-    assert agent.tapes.handoff_calls == []
     assert agent.run_calls == [{"session_id": "session-1", "prompt": "hello", "state": {"_runtime_agent": agent}}]
-
-
-def test_run_model_passthrough_when_usage_is_missing(monkeypatch) -> None:
-    monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "1000")
-    agent = FakeAgent(last_token_usage=None, result="plain output")
-    shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
-
-    result = asyncio.run(
-        shrink.run_model("hello", session_id="session-1", state={"_runtime_agent": agent})  # type: ignore[arg-type]
-    )
-
-    assert result == "plain output"
-    assert agent.tapes.info_calls == ["tape:session-1"]
     assert agent.tapes.handoff_calls == []
-    assert agent.run_calls == [{"session_id": "session-1", "prompt": "hello", "state": {"_runtime_agent": agent}}]
 
 
-def test_run_model_passthrough_when_usage_does_not_exceed_limit(monkeypatch) -> None:
-    monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "1000")
-    agent = FakeAgent(last_token_usage=1000, result="plain output")
-    shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
-
-    result = asyncio.run(
-        shrink.run_model("hello", session_id="session-1", state={"_runtime_agent": agent})  # type: ignore[arg-type]
-    )
-
-    assert result == "plain output"
-    assert agent.tapes.info_calls == ["tape:session-1"]
-    assert agent.tapes.handoff_calls == []
-    assert agent.run_calls == [{"session_id": "session-1", "prompt": "hello", "state": {"_runtime_agent": agent}}]
-
-
-def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) -> None:
-    monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "1000")
-    agent = FakeAgent(last_token_usage=1200, result="continued output")
+def test_run_model_retries_with_handoff_on_context_overflow(monkeypatch) -> None:
+    monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "200000")
+    monkeypatch.setenv("BUB_SHRINK_TOOL_RESULT_MAX_CHARS", "4096")
+    agent = FakeAgent(error=RuntimeError("invalid_input: exceeded model token limit"))
     shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
     captured: list[dict[str, object]] = []
 
@@ -105,7 +108,7 @@ def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) 
         *,
         session_id: str,
         state: dict[str, object],
-        usage: int | None,
+        error: str,
         context_limit: int | None,
     ) -> str:
         captured.append(
@@ -113,8 +116,8 @@ def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) 
                 "runtime_agent": runtime_agent,
                 "prompt": prompt,
                 "session_id": session_id,
-                "state": state,
-                "usage": usage,
+                "state": dict(state),
+                "error": error,
                 "context_limit": context_limit,
             }
         )
@@ -127,63 +130,35 @@ def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) 
     )
 
     assert result == "continued output"
-    assert agent.tapes.info_calls == ["tape:session-1"]
-    assert agent.tapes.handoff_calls == []
     assert captured == [
         {
             "runtime_agent": agent,
-            "session_id": "session-1",
             "prompt": "original prompt",
-            "state": {"_runtime_agent": agent},
-            "usage": 1200,
-            "context_limit": 1000,
+            "session_id": "session-1",
+            "state": {"_runtime_agent": agent, plugin.HANDOFF_RETRY_STATE_KEY: True},
+            "error": "invalid_input: exceeded model token limit",
+            "context_limit": 200000,
         }
     ]
-    assert agent.run_calls == []
 
 
-def test_run_model_uses_fixed_handoff_metadata(monkeypatch) -> None:
-    monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "512")
-    agent = FakeAgent(last_token_usage=4096)
+def test_run_model_does_not_retry_twice(monkeypatch) -> None:
+    monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "200000")
+    agent = FakeAgent(error=RuntimeError("invalid_input: exceeded model token limit"))
     shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
-    captured: list[dict[str, object]] = []
 
-    async def fake_run_with_handoff_context(
-        runtime_agent: object,
-        prompt: str | list[dict],
-        *,
-        session_id: str,
-        state: dict[str, object],
-        usage: int | None,
-        context_limit: int | None,
-    ) -> str:
-        captured.append(
-            {
-                "runtime_agent": runtime_agent,
-                "prompt": prompt,
-                "session_id": session_id,
-                "state": state,
-                "usage": usage,
-                "context_limit": context_limit,
-            }
-        )
-        return "continued output"
-
-    monkeypatch.setattr(plugin, "_run_with_handoff_context", fake_run_with_handoff_context)
-
-    asyncio.run(
-        shrink.run_model("original prompt", session_id="session-9", state={"_runtime_agent": agent})  # type: ignore[arg-type]
-    )
-
-    assert agent.tapes.handoff_calls == []
-    assert captured[0]["prompt"] == "original prompt"
-    assert captured[0]["usage"] == 4096
-    assert captured[0]["context_limit"] == 512
+    state = {"_runtime_agent": agent, plugin.HANDOFF_RETRY_STATE_KEY: True}  # type: ignore[arg-type]
+    try:
+        asyncio.run(shrink.run_model("hello", session_id="session-1", state=state))
+    except RuntimeError as error:
+        assert str(error) == "invalid_input: exceeded model token limit"
+    else:
+        raise AssertionError("expected RuntimeError")
 
 
 def test_run_model_uses_runtime_workspace_for_tape_lookup(monkeypatch, tmp_path) -> None:
-    monkeypatch.setenv("BUB_SHRINK_CONTEXT_LIMIT", "1000")
-    agent = FakeAgent(last_token_usage=500, result="plain output")
+    monkeypatch.setenv("BUB_SHRINK_TOOL_RESULT_MAX_CHARS", "1024")
+    agent = FakeAgent(result="plain output")
     shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
 
     result = asyncio.run(
@@ -195,11 +170,11 @@ def test_run_model_uses_runtime_workspace_for_tape_lookup(monkeypatch, tmp_path)
     )
 
     assert result == "plain output"
-    assert agent.tapes.session_tape_calls == [("session-1", tmp_path.resolve())]
+    assert agent.tapes.session_tape_calls == []
 
 
 def test_run_model_raises_when_runtime_agent_is_missing(monkeypatch) -> None:
-    monkeypatch.delenv("BUB_SHRINK_CONTEXT_LIMIT", raising=False)
+    monkeypatch.delenv("BUB_SHRINK_TOOL_RESULT_MAX_CHARS", raising=False)
     shrink = plugin.ShrinkPlugin(framework=object())  # type: ignore[arg-type]
 
     try:
@@ -239,7 +214,7 @@ def test_run_with_handoff_context_creates_handoff_inside_fork() -> None:
 
     class TrackingAgent:
         def __init__(self) -> None:
-            self.tapes = TrackingTapes(last_token_usage=4096)
+            self.tapes = TrackingTapes()
 
         async def _agent_loop(self, *, tape: SimpleNamespace, prompt: str | list[dict]) -> str:
             events.append(("agent_loop", prompt))
@@ -257,7 +232,7 @@ def test_run_with_handoff_context_creates_handoff_inside_fork() -> None:
             "original prompt",
             session_id="session-1",
             state={"flag": "set"},
-            usage=4096,
+            error="invalid_input: exceeded model token limit",
             context_limit=1024,
         )
     )
@@ -269,7 +244,7 @@ def test_run_with_handoff_context_creates_handoff_inside_fork() -> None:
             "name": plugin.DEFAULT_HANDOFF_NAME,
             "state": {
                 "summary": plugin.DEFAULT_HANDOFF_SUMMARY,
-                "usage": 4096,
+                "error": "invalid_input: exceeded model token limit",
                 "limit": 1024,
             },
         }
