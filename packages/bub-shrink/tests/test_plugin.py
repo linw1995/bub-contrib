@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import itertools
 from pathlib import Path
 from types import SimpleNamespace
 
-from republic import TapeContext, TapeEntry
+from republic import TapeContext
 
 from bub_shrink import plugin
 
@@ -20,7 +19,7 @@ class FakeTapes:
 
     def session_tape(self, session_id: str, workspace: Path) -> SimpleNamespace:
         self.session_tape_calls.append((session_id, workspace))
-        return SimpleNamespace(name=f"tape:{session_id}")
+        return SimpleNamespace(name=f"tape:{session_id}", context=TapeContext(state={}))
 
     async def info(self, tape_name: str) -> SimpleNamespace:
         self.info_calls.append(tape_name)
@@ -106,6 +105,8 @@ def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) 
         *,
         session_id: str,
         state: dict[str, object],
+        usage: int | None,
+        context_limit: int | None,
     ) -> str:
         captured.append(
             {
@@ -113,6 +114,8 @@ def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) 
                 "prompt": prompt,
                 "session_id": session_id,
                 "state": state,
+                "usage": usage,
+                "context_limit": context_limit,
             }
         )
         return "continued output"
@@ -125,23 +128,15 @@ def test_run_model_handoffs_and_continues_when_usage_exceeds_limit(monkeypatch) 
 
     assert result == "continued output"
     assert agent.tapes.info_calls == ["tape:session-1"]
-    assert agent.tapes.handoff_calls == [
-        {
-            "tape_name": "tape:session-1",
-            "name": plugin.DEFAULT_HANDOFF_NAME,
-            "state": {
-                "summary": plugin.DEFAULT_HANDOFF_SUMMARY,
-                "usage": 1200,
-                "limit": 1000,
-            },
-        }
-    ]
+    assert agent.tapes.handoff_calls == []
     assert captured == [
         {
             "runtime_agent": agent,
             "session_id": "session-1",
             "prompt": "original prompt",
             "state": {"_runtime_agent": agent},
+            "usage": 1200,
+            "context_limit": 1000,
         }
     ]
     assert agent.run_calls == []
@@ -159,6 +154,8 @@ def test_run_model_uses_fixed_handoff_metadata(monkeypatch) -> None:
         *,
         session_id: str,
         state: dict[str, object],
+        usage: int | None,
+        context_limit: int | None,
     ) -> str:
         captured.append(
             {
@@ -166,6 +163,8 @@ def test_run_model_uses_fixed_handoff_metadata(monkeypatch) -> None:
                 "prompt": prompt,
                 "session_id": session_id,
                 "state": state,
+                "usage": usage,
+                "context_limit": context_limit,
             }
         )
         return "continued output"
@@ -176,18 +175,10 @@ def test_run_model_uses_fixed_handoff_metadata(monkeypatch) -> None:
         shrink.run_model("original prompt", session_id="session-9", state={"_runtime_agent": agent})  # type: ignore[arg-type]
     )
 
-    assert agent.tapes.handoff_calls == [
-        {
-            "tape_name": "tape:session-9",
-            "name": plugin.DEFAULT_HANDOFF_NAME,
-            "state": {
-                "summary": plugin.DEFAULT_HANDOFF_SUMMARY,
-                "usage": 4096,
-                "limit": 512,
-            },
-        }
-    ]
+    assert agent.tapes.handoff_calls == []
     assert captured[0]["prompt"] == "original prompt"
+    assert captured[0]["usage"] == 4096
+    assert captured[0]["context_limit"] == 512
 
 
 def test_run_model_uses_runtime_workspace_for_tape_lookup(monkeypatch, tmp_path) -> None:
@@ -219,45 +210,74 @@ def test_run_model_raises_when_runtime_agent_is_missing(monkeypatch) -> None:
         raise AssertionError("expected RuntimeError")
 
 
-def test_select_messages_from_last_anchor_keeps_only_last_anchor_segment() -> None:
-    entries = [
-        TapeEntry.anchor("session/start", state={"owner": "human"}),
-        TapeEntry.message({"role": "user", "content": "before"}, run_id="run-1"),
-        TapeEntry.anchor("auto-context-shrink", state={"summary": "latest handoff"}),
-        TapeEntry.message({"role": "assistant", "content": "after"}, run_id="run-2"),
-    ]
+def test_run_with_handoff_context_creates_handoff_inside_fork() -> None:
+    events: list[tuple[str, object]] = []
 
-    messages = plugin._select_messages_from_last_anchor(entries, TapeContext(state={}))
+    class TrackingTapes(FakeTapes):
+        def session_tape(self, session_id: str, workspace: Path) -> SimpleNamespace:
+            self.session_tape_calls.append((session_id, workspace))
+            return SimpleNamespace(name=f"tape:{session_id}", context=TapeContext(state={}))
 
-    assert messages == [
-        {
-            "role": "assistant",
-            "content": '[Anchor created: auto-context-shrink]: {"summary": "latest handoff"}',
-        },
-        {
-            "role": "assistant",
-            "content": "after",
-        },
-    ]
+        @contextlib.asynccontextmanager
+        async def fork_tape(self, tape_name: str, merge_back: bool = True):
+            events.append(("fork_enter", merge_back))
+            yield
+            events.append(("fork_exit", merge_back))
 
+        async def ensure_bootstrap_anchor(self, tape_name: str) -> None:
+            events.append(("ensure_bootstrap_anchor", tape_name))
 
-def test_select_messages_from_last_anchor_accepts_iterables() -> None:
-    entries = itertools.chain(
-        [TapeEntry.anchor("session/start", state={"owner": "human"})],
-        [TapeEntry.message({"role": "user", "content": "before"}, run_id="run-1")],
-        [TapeEntry.anchor("auto-context-shrink", state={"summary": "latest handoff"})],
-        [TapeEntry.message({"role": "assistant", "content": "after"}, run_id="run-2")],
+        async def handoff(
+            self,
+            tape_name: str,
+            *,
+            name: str,
+            state: dict[str, object] | None = None,
+        ) -> list[object]:
+            events.append(("handoff", tape_name))
+            return await super().handoff(tape_name, name=name, state=state)
+
+    class TrackingAgent:
+        def __init__(self) -> None:
+            self.tapes = TrackingTapes(last_token_usage=4096)
+
+        async def _agent_loop(self, *, tape: SimpleNamespace, prompt: str | list[dict]) -> str:
+            events.append(("agent_loop", prompt))
+            assert tape.context.state == {"flag": "set"}
+            return "loop output"
+
+        async def _run_command(self, tape: SimpleNamespace, *, line: str) -> str:
+            raise AssertionError("command path should not be used")
+
+    agent = TrackingAgent()
+
+    result = asyncio.run(
+        plugin._run_with_handoff_context(
+            agent,  # type: ignore[arg-type]
+            "original prompt",
+            session_id="session-1",
+            state={"flag": "set"},
+            usage=4096,
+            context_limit=1024,
+        )
     )
 
-    messages = plugin._select_messages_from_last_anchor(entries, TapeContext(state={}))
-
-    assert messages == [
+    assert result == "loop output"
+    assert agent.tapes.handoff_calls == [
         {
-            "role": "assistant",
-            "content": '[Anchor created: auto-context-shrink]: {"summary": "latest handoff"}',
-        },
-        {
-            "role": "assistant",
-            "content": "after",
-        },
+            "tape_name": "tape:session-1",
+            "name": plugin.DEFAULT_HANDOFF_NAME,
+            "state": {
+                "summary": plugin.DEFAULT_HANDOFF_SUMMARY,
+                "usage": 4096,
+                "limit": 1024,
+            },
+        }
+    ]
+    assert events == [
+        ("fork_enter", True),
+        ("ensure_bootstrap_anchor", "tape:session-1"),
+        ("handoff", "tape:session-1"),
+        ("agent_loop", "original prompt"),
+        ("fork_exit", True),
     ]
