@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import itertools
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -225,6 +226,28 @@ def test_select_messages_from_last_anchor_keeps_only_last_anchor_segment() -> No
         TapeEntry.anchor("auto-context-shrink", state={"summary": "latest handoff"}),
         TapeEntry.message({"role": "assistant", "content": "after"}, run_id="run-2"),
     ]
+
+    messages = plugin._select_messages_from_last_anchor(entries, TapeContext(state={}))
+
+    assert messages == [
+        {
+            "role": "assistant",
+            "content": '[Anchor created: auto-context-shrink]: {"summary": "latest handoff"}',
+        },
+        {
+            "role": "assistant",
+            "content": "after",
+        },
+    ]
+
+
+def test_select_messages_from_last_anchor_accepts_iterables() -> None:
+    entries = itertools.chain(
+        [TapeEntry.anchor("session/start", state={"owner": "human"})],
+        [TapeEntry.message({"role": "user", "content": "before"}, run_id="run-1")],
+        [TapeEntry.anchor("auto-context-shrink", state={"summary": "latest handoff"})],
+        [TapeEntry.message({"role": "assistant", "content": "after"}, run_id="run-2")],
+    )
 
     messages = plugin._select_messages_from_last_anchor(entries, TapeContext(state={}))
 

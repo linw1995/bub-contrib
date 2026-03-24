@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
 from typing import cast
@@ -125,23 +126,24 @@ def _prompt_kind(prompt: str | list[dict]) -> str:
     return "parts"
 
 
-def _select_messages_from_last_anchor(entries: list[TapeEntry], context: TapeContext) -> list[dict]:
+def _select_messages_from_last_anchor(entries: Iterable[TapeEntry], context: TapeContext) -> list[dict]:
+    entry_list = list(entries)
     last_anchor_index = -1
-    for index, entry in enumerate(entries):
+    for index, entry in enumerate(entry_list):
         if entry.kind == "anchor":
             last_anchor_index = index
     if last_anchor_index < 0:
-        logger.warning("shrink.context.no_anchor_found entries={}", len(entries))
-        return _default_select_messages(entries, context)
+        logger.warning("shrink.context.no_anchor_found entries={}", len(entry_list))
+        return _default_select_messages(entry_list, context)
 
-    last_anchor = entries[last_anchor_index]
+    last_anchor = entry_list[last_anchor_index]
     logger.info(
         "shrink.context.after_last_anchor anchor_name={} entries_before={} entries_after={}",
         last_anchor.payload.get("name"),
         last_anchor_index,
-        len(entries) - last_anchor_index,
+        len(entry_list) - last_anchor_index,
     )
-    return _default_select_messages(entries[last_anchor_index:], context)
+    return _default_select_messages(entry_list[last_anchor_index:], context)
 
 
 async def _run_with_handoff_context(
