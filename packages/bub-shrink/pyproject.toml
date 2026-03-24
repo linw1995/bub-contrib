@@ -1,0 +1,15 @@
+[project]
+name = "bub-shrink"
+version = "0.1.0"
+description = "Context Shrink for Bub"
+readme = "README.md"
+authors = [{ name = "林玮 (Jade Lin)", email = "linw1995@icloud.com" }]
+requires-python = ">=3.12"
+dependencies = ["pydantic-settings"]
+
+[project.entry-points.bub]
+shrink = "bub_shrink.plugin:ShrinkPlugin"
+
+[build-system]
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"

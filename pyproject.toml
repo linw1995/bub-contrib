@@ -18,6 +18,7 @@ dependencies = [
     "bub-feishu",
     "bub-session-prompt",
     "bub-wechat",
+    "bub-shrink",
 ]
 
 [tool.uv.workspace]
@@ -37,3 +38,4 @@ bub-web-search = { workspace = true }
 bub-feishu = { workspace = true }
 bub-session-prompt = { workspace = true }
 bub-wechat = { workspace = true }
+bub-shrink = { workspace = true }
