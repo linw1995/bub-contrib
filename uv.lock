@@ -456,11 +456,15 @@ name = "bub-shrink"
 version = "0.1.0"
 source = { editable = "packages/bub-shrink" }
 dependencies = [
+    { name = "loguru" },
     { name = "pydantic-settings" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic-settings" }]
+requires-dist = [
+    { name = "loguru" },
+    { name = "pydantic-settings" },
+]
 
 [[package]]
 name = "bub-tapestore-redis"

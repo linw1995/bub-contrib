@@ -5,7 +5,7 @@ description = "Context Shrink for Bub"
 readme = "README.md"
 authors = [{ name = "林玮 (Jade Lin)", email = "linw1995@icloud.com" }]
 requires-python = ">=3.12"
-dependencies = ["pydantic-settings"]
+dependencies = ["loguru", "pydantic-settings"]
 
 [project.entry-points.bub]
 shrink = "bub_shrink.plugin:ShrinkPlugin"

@@ -6,6 +6,7 @@ from typing import cast
 from bub import BubFramework, hookimpl
 from bub.builtin.agent import CONTINUE_PROMPT, Agent
 from bub.types import State
+from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,18 +30,46 @@ class ShrinkPlugin:
 
     @hookimpl(tryfirst=True)
     async def run_model(self, prompt: str | list[dict], session_id: str, state: State) -> str:
+        logger.info(
+            "shrink.run_model.start session_id={} prompt_kind={} workspace={}",
+            session_id,
+            _prompt_kind(prompt),
+            _workspace_from_state(state),
+        )
         runtime_agent = _runtime_agent_from_state(state)
         if runtime_agent is None:
+            logger.error("shrink.run_model.missing_runtime_agent session_id={}", session_id)
             raise RuntimeError("bub-shrink could not find an active model backend")
 
         settings = _load_settings()
+        logger.info(
+            "shrink.run_model.settings session_id={} context_limit={}",
+            session_id,
+            settings.context_limit,
+        )
         should_handoff, tape_name, usage = await _should_handoff(
             runtime_agent,
             session_id=session_id,
             state=state,
             context_limit=settings.context_limit,
         )
+        logger.info(
+            "shrink.run_model.decision session_id={} tape={} usage={} context_limit={} should_handoff={}",
+            session_id,
+            tape_name,
+            usage,
+            settings.context_limit,
+            should_handoff,
+        )
         if should_handoff:
+            logger.warning(
+                "shrink.run_model.handoff session_id={} tape={} usage={} context_limit={} handoff_name={}",
+                session_id,
+                tape_name,
+                usage,
+                settings.context_limit,
+                DEFAULT_HANDOFF_NAME,
+            )
             await runtime_agent.tapes.handoff(
                 tape_name,
                 name=DEFAULT_HANDOFF_NAME,
@@ -50,13 +79,22 @@ class ShrinkPlugin:
                     "limit": settings.context_limit,
                 },
             )
+            logger.info(
+                "shrink.run_model.continue session_id={} tape={} prompt={}",
+                session_id,
+                tape_name,
+                CONTINUE_PROMPT,
+            )
             return await runtime_agent.run(session_id=session_id, prompt=CONTINUE_PROMPT, state=state)
 
+        logger.info("shrink.run_model.forward_original session_id={} tape={}", session_id, tape_name)
         return await runtime_agent.run(session_id=session_id, prompt=prompt, state=state)
 
 
 def _load_settings() -> ShrinkSettings:
-    return ShrinkSettings()
+    settings = ShrinkSettings()
+    logger.debug("shrink.settings.loaded context_limit={}", settings.context_limit)
+    return settings
 
 
 def _runtime_agent_from_state(state: State) -> Agent | None:
@@ -73,6 +111,12 @@ def _workspace_from_state(state: State) -> Path:
     return Path.cwd().resolve()
 
 
+def _prompt_kind(prompt: str | list[dict]) -> str:
+    if isinstance(prompt, str):
+        return "text"
+    return "parts"
+
+
 async def _should_handoff(
     runtime_agent: Agent,
     *,
@@ -81,11 +125,37 @@ async def _should_handoff(
     context_limit: int | None,
 ) -> tuple[bool, str, int | None]:
     tape = runtime_agent.tapes.session_tape(session_id, _workspace_from_state(state))
+    logger.info("shrink.should_handoff.tape session_id={} tape={}", session_id, tape.name)
     if context_limit is None:
+        logger.info("shrink.should_handoff.skip session_id={} tape={} reason=context_limit_unset", session_id, tape.name)
         return False, tape.name, None
 
     info = await runtime_agent.tapes.info(tape.name)
     usage = getattr(info, "last_token_usage", None)
+    logger.info(
+        "shrink.should_handoff.usage session_id={} tape={} last_token_usage={} context_limit={}",
+        session_id,
+        tape.name,
+        usage,
+        context_limit,
+    )
     if not isinstance(usage, int):
+        logger.info("shrink.should_handoff.skip session_id={} tape={} reason=usage_missing", session_id, tape.name)
         return False, tape.name, None
-    return usage > context_limit, tape.name, usage
+    if usage <= context_limit:
+        logger.info(
+            "shrink.should_handoff.skip session_id={} tape={} reason=usage_within_limit usage={} context_limit={}",
+            session_id,
+            tape.name,
+            usage,
+            context_limit,
+        )
+        return False, tape.name, usage
+    logger.warning(
+        "shrink.should_handoff.trigger session_id={} tape={} usage={} context_limit={}",
+        session_id,
+        tape.name,
+        usage,
+        context_limit,
+    )
+    return True, tape.name, usage
